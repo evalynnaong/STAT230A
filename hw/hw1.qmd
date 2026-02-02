@@ -1,0 +1,29 @@
+---
+title: "hw1"
+format: pdf
+editor: visual
+---
+
+```{r}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+install.packages("HistData")
+library(HistData)
+head(GaltonFamilies)
+```
+
+```{r}
+mod <- lm(childHeight ~ midparentHeight, data = GaltonFamilies)
+coefficients(mod)
+```
+
+\*Same as alpha_fit = 22.63624 and beta_fit = 0.6373609 on page 9 of the text
+
+```{r}
+plot(childHeight ~ midparentHeight, data = GaltonFamilies, 
+     main = "Galton Parent-Child Height Regression", 
+     xlab = "midparentHeight", 
+     ylab = "childHeight")
+
+abline(mod, col = "red", lwd = 2)
+```
