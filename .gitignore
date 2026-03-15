@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# system
+.DS_Store
+
+# data files
+*.csv
