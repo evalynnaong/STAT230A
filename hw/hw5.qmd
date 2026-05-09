@@ -1,0 +1,144 @@
+---
+title: "hw5"
+format: pdf
+editor: visual
+---
+
+5\. Lalonde figures
+
+```{r}
+library(MatchIt)
+library(leaps)
+data(lalonde)
+
+y <- lalonde$re78
+X_vars <- c("age","educ", "hisp","married","nodegr","re74","re75","treat")
+
+sub_fit <- regsubsets(re78 ~ age + educ + married +
+                              nodegree + re74 + re75 + treat,
+                      data    = lalonde,
+                      nvmax   = 9,
+                      method  = "exhaustive")
+
+sub_sum <- summary(sub_fit)
+n       <- nrow(lalonde)
+p_vec   <- 1:9          # number of predictors in model of size k
+
+
+rss_vec <- sub_sum$rss
+k_vec   <- p_vec + 1          # +1 for intercept
+
+aic_vec <- n * log(rss_vec / n) + 2 * k_vec
+
+bic_vec <- n * log(rss_vec / n) + k_vec * log(n)
+
+gcv_vec <- (rss_vec / n) / (1 - k_vec / n)^2
+
+
+
+press_vec <- numeric(9)
+for (k in 1:7) {
+  vars_k   <- names(which(sub_sum$which[k, -1]))   # drop intercept column
+  formula_k <- as.formula(paste("re78 ~", paste(vars_k, collapse = " + ")))
+  fit_k    <- lm(formula_k, data = lalonde)
+  h_ii     <- hatvalues(fit_k)
+  e_i      <- residuals(fit_k)
+  press_vec[k] <- sum((e_i / (1 - h_ii))^2)
+}
+
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
+
+plot(p_vec, aic_vec,    pch = 19,
+     xlab = "# predictors", ylab = "AIC",   main = "AIC")
+
+plot(p_vec, bic_vec,    pch = 19,
+     xlab = "# predictors", ylab = "BIC",   main = "BIC")
+
+plot(p_vec, press_vec,  pch = 19, 
+     xlab = "# predictors", ylab = "PRESS", main = "PRESS")
+
+plot(p_vec, gcv_vec,    pch = 19, 
+     xlab = "# predictors", ylab = "GCV",   main = "GCV")
+
+```
+
+6.  Noise , Boston housing data
+
+```{r}
+library(MASS)       # Boston data
+library(glmnet)     # ridge and lasso
+
+set.seed(42)
+data(Boston)
+
+
+y    <- Boston$medv
+X_orig <- model.matrix(medv ~ ., data = Boston)[, -1]   # 13 original predictors
+n    <- nrow(X_orig)   # 506
+
+# Helper: fit OLS / ridge / lasso and return test MSE
+compare_models <- function(X_full, y, label) {
+  # 80/20 train-test split
+  set.seed(42)
+  train_idx <- sample(n, floor(0.8 * n))
+  test_idx  <- setdiff(1:n, train_idx)
+
+  X_tr <- X_full[train_idx, ];  y_tr <- y[train_idx]
+  X_te <- X_full[test_idx,  ];  y_te <- y[test_idx]
+
+  #  OLS
+  ols_df   <- data.frame(y = y_tr, X_tr)
+  ols_fit  <- lm(y ~ ., data = ols_df)
+  ols_pred <- predict(ols_fit, newdata = data.frame(X_te))
+  ols_mse  <- mean((y_te - ols_pred)^2)
+
+  #  Ridge 
+  cv_ridge  <- cv.glmnet(X_tr, y_tr, alpha = 0, nfolds = 10)
+  ridge_pred <- predict(cv_ridge, s = "lambda.min", newx = X_te)
+  ridge_mse  <- mean((y_te - ridge_pred)^2)
+
+  #  Lasso 
+  cv_lasso  <- cv.glmnet(X_tr, y_tr, alpha = 1, nfolds = 10)
+  lasso_pred <- predict(cv_lasso, s = "lambda.min", newx = X_te)
+  lasso_mse  <- mean((y_te - lasso_pred)^2)
+
+  # Number of non-zero lasso coefficients
+  lasso_nz  <- sum(coef(cv_lasso, s = "lambda.min") != 0) - 1  # excl. intercept
+
+  cat(sprintf("\n=== %s ===\n", label))
+  cat(sprintf("  OLS   test MSE: %.3f\n", ols_mse))
+  cat(sprintf("  Ridge test MSE: %.3f  (lambda=%.4f)\n",
+              ridge_mse, cv_ridge$lambda.min))
+  cat(sprintf("  Lasso test MSE: %.3f  (lambda=%.4f, non-zero coefs: %d)\n",
+              lasso_mse, cv_lasso$lambda.min, lasso_nz))
+
+  invisible(list(ols=ols_mse, ridge=ridge_mse, lasso=lasso_mse))
+}
+
+res0 <- compare_models(X_orig, y, "Original (p=13)")
+
+noise1 <- matrix(rnorm(n * n), nrow = n)
+X1     <- cbind(X_orig, noise1)          
+res1   <- compare_models(X1, y, "p = n noise columns added (p=519)")
+
+noise2 <- matrix(rnorm(n * 2 * n), nrow = n)
+X2     <- cbind(X_orig, noise2)          # p = 13 + 1012 = 1025
+
+res2_ridge_lasso <- compare_models(X2[, ], y,
+                                   "p = 2n noise columns added (p=1025)")
+
+scenarios <- c("Original\n(p=13)", "p = n\n(p=519)", "p = 2n\n(p=1025)")
+ols_mse   <- c(res0$ols,   res1$ols,   NA)    # OLS undefined at p>n_train
+ridge_mse <- c(res0$ridge, res1$ridge, res2_ridge_lasso$ridge)
+lasso_mse <- c(res0$lasso, res1$lasso, res2_ridge_lasso$lasso)
+
+barplot(rbind(ols_mse, ridge_mse, lasso_mse),
+        beside  = TRUE,
+        names.arg = scenarios,
+        col     = c("steelblue","darkorange","darkgreen"),
+        legend.text = c("OLS","Ridge","Lasso"),
+        args.legend = list(x = "topleft"),
+        ylab    = "Test MSE",
+        main    = "Boston Housing: OLS vs Ridge vs Lasso\nas noise columns increase",
+        ylim    = c(0, max(c(ols_mse, ridge_mse, lasso_mse), na.rm=TRUE) * 1.2))
+```

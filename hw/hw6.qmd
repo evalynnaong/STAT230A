@@ -1,0 +1,77 @@
+---
+title: "hw6"
+format: html
+editor: visual
+---
+
+## 4.
+
+a\)
+
+```{r}
+library(ISLR)
+data(Auto)
+
+mpg_median <- median(Auto$mpg)
+
+Auto$mpg01 <- ifelse(Auto$mpg > mpg_median, 1, 0)
+
+table(Auto$mpg01)
+```
+
+b\)
+
+```{r}
+pairs(Auto[, c("mpg01", "cylinders", "displacement", "horsepower", "weight", "acceleration", "year")])
+
+
+par(mfrow = c(2, 3))
+
+boxplot(cylinders ~ mpg01, data = Auto, main = "Cylinders vs mpg01")
+boxplot(displacement ~ mpg01, data = Auto, main = "Displacement vs mpg01")
+boxplot(horsepower ~ mpg01, data = Auto, main = "Horsepower vs mpg01")
+boxplot(weight ~ mpg01, data = Auto, main = "Weight vs mpg01")
+boxplot(acceleration ~ mpg01, data = Auto, main = "Acceleration vs mpg01")
+boxplot(year ~ mpg01, data = Auto, main = "Year vs mpg01")
+```
+
+Displacement, horsepower, weight, and year seem like the most useful features based on the box plots? maybe?
+
+c\)
+
+```{r}
+set.seed(1)
+
+# Split data (70/30)
+train_idx <- sample(1:nrow(Auto), 0.7 * nrow(Auto))
+
+train <- Auto[train_idx, ]
+test  <- Auto[-train_idx, ]
+
+# Fit logistic regression 
+model_c <- glm(mpg01 ~ cylinders + displacement + horsepower + weight + year,
+               data = train, family = binomial)
+
+probs <- predict(model_c, newdata = test, type = "response")
+preds <- ifelse(probs > 0.5, 1, 0)
+
+test_error <- mean(preds != test$mpg01)
+test_error
+```
+
+d\)
+
+```{r}
+
+#model_d <- glm(mpg01 ~ . - mpg - name,  # remove mpg + name
+#               data = train, family = binomial)
+
+#probs_d <- predict(model_d, newdata = test, type = "response")
+#preds_d <- ifelse(probs_d > 0.5, 1, 0)
+
+#test_error_d <- mean(preds_d != test$mpg01)
+
+#test_error
+#test_error_d
+
+```

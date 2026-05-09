@@ -1,0 +1,47 @@
+---
+title: "hw7"
+format: html
+editor: visual
+---
+
+## 
+
+4.  a\)
+
+```{r}
+treaty <- read.csv("treaty.csv")
+
+covs <- c("shift_left", "flexible", "regnorm", "gdpgrow",
+          "resgdp", "bopgdp", "useimfcr", "surveil",
+          "univers", "resvol", "totvol", "tradedep", 
+          "military", "termlim","parli", "lastrest", 
+          "lastrest2", "lastrest3")
+
+form <- as.formula(
+  paste("restrict ~ art8 +", paste(covs, collapse = " + "))
+)
+
+model <- glm(form, data = treaty, family = binomial)
+
+summary(model)
+
+```
+
+This is an observational regression, not a truly randomized experiment. Even with controlling for covariates, there are omitted variable bias. This result reflects association not causal effect.
+
+b\)
+
+```{r}
+library(sandwich)
+library(lmtest)
+
+cluster_se <- vcovCL(model, cluster = ~ imf_ccode)
+
+coeftest(model, vcov = cluster_se)
+```
+
+Clustering should make the evaluation more robust, but no significant change is observed.
+
+c\)
+
+Ridge regression typically shrinks the coefficients towards 0 (with the goal of increasing prediction stability). The goal with this eval is to conduct inference on the art8 coefficient, so utilizing ridge regression is not ideal.

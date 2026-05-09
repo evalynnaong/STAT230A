@@ -1,0 +1,7 @@
+name: stat_230
+dependencies:
+  - python=3.9
+  - pip
+  - pip:
+    - dowhy  # This installs the package containing dowhy.datasets
+    - pandas
