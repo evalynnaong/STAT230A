@@ -160,7 +160,7 @@ def standardize(df, feature_list):
     scaler = StandardScaler()
     scaled_names = [f"{col}_std" for col in feature_list]
     df[scaled_names] = scaler.fit_transform(df[feature_list])
-    return df
+    return df, scaled_names
 
 
 def prepare_analysis_data(ems_path, hazards_path):
@@ -174,5 +174,7 @@ def prepare_analysis_data(ems_path, hazards_path):
     med_inc = assign_period(med_inc)
 
     call_metrics = aggregate_calls_by_period(med_inc)
-    result = merge_hazards_and_calls(hazards_sf, call_metrics)
-    return result
+    df = merge_hazards_and_calls(hazards_sf, call_metrics)
+    df, scaled_cols = standardize(df, HAZARD_COVARIATES)
+    print(f"Standardized columns: {scaled_cols}")
+    return df
