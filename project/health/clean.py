@@ -112,6 +112,7 @@ def assign_period(df):
     df = df.copy()
     df['date_column'] = pd.to_datetime(df['call_date'], format='%m/%d/%Y')
     df['month'] = df['date_column'].dt.month
+    df['year'] = df['date_column'].dt.year
     df['iso_week'] = df['date_column'].dt.isocalendar().week.astype(int)
 
     def _period_label(m):
@@ -163,7 +164,7 @@ def standardize(df, feature_list):
     return df, scaled_names
 
 
-def prepare_analysis_data(ems_path, hazards_path):
+def prepare_analysis_data(ems_path, hazards_path, year=None):
     hazards, demographics, dictionary = load_hazards_data(hazards_path)
     hazards_sf = filter_san_francisco(hazards)
 
@@ -172,6 +173,9 @@ def prepare_analysis_data(ems_path, hazards_path):
     med_inc = extract_coords(med_inc, location_col='case_location')
     med_inc = assign_nearest_tract(med_inc, hazards_sf)
     med_inc = assign_period(med_inc)
+
+    if year is not None:
+        med_inc = med_inc[med_inc['year'] == year]
 
     call_metrics = aggregate_calls_by_period(med_inc)
     df = merge_hazards_and_calls(hazards_sf, call_metrics)
